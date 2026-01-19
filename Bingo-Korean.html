@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>한국어 빙고 게임</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    #controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 20px;
+      gap: 10px;
+    }
+    #topControls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    #modeSelection, #boardCountContainer {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #boardCountDisplay {
+      font-size: 1.2rem;
+    }
+    #bingoBoards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+    .boardContainer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      --tile-bg: #00274d;
+      --tile-text: #ffcb05;
+    }
+    .boardHeader {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 5px;
+    }
+    .boardLabel {
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+    .nameInput {
+      padding: 4px 6px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 120px;
+    }
+    .bingoBoard {
+      display: grid;
+      grid-template-columns: repeat(5, 60px);
+      gap: 10px;
+      margin-top: 5px;
+    }
+    .cell {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.5rem;
+      cursor: pointer;
+      border: 1px solid #333;
+      background-color: var(--tile-bg);
+      color: var(--tile-text);
+      user-select: none;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .drawn {
+      background-color: #ffeb3b !important;
+      color: #000 !important;
+    }
+    .colorSchemes {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .colorButton {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid;
+      cursor: pointer;
+    }
+    #rollBallButton, #resetButton {
+      margin-top: 10px;
+      padding: 8px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+    }
+    #drawnNumbers {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+      max-width: 300px;
+      justify-content: center;
+    }
+    .drawnNumber {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.2rem;
+      border: 1px solid #333;
+      background-color: #00274d;
+      color: #ffcb05;
+      user-select: none;
+      transition: background-color 0.2s, color 0.2s;
+    }
+  </style>
+</head>
+<body>
+  <h1>한국어 빙고 게임</h1>
+  <div id="controls">
+    <div id="topControls">
+      <div id="modeSelection">
+        <label><input type="radio" name="mode" value="alphabet" checked> 알파벳</label>
+        <label><input type="radio" name="mode" value="numbers"> 숫자</label>
+      </div>
+
+      <div id="boardCountContainer">
+        <label for="boardCount">보드 수:</label>
+        <input type="range" id="boardCount" min="1" max="30" value="1">
+        <span id="boardCountDisplay">1</span>
+      </div>
+    </div>
+
+    <div>
+      <button id="rollBallButton">공 뽑기</button>
+      <button id="resetButton">초기화</button>
+    </div>
+  </div>
+
+  <div id="drawnNumbers"></div>
+  <div id="bingoBoards"></div>
+
+<script>
+const bingoBoardsContainer = document.getElementById('bingoBoards');
+const boardCountSlider = document.getElementById('boardCount');
+const rollBallButton = document.getElementById('rollBallButton');
+const resetButton = document.getElementById('resetButton');
+const drawnNumbersContainer = document.getElementById('drawnNumbers');
+const boardCountDisplay = document.getElementById('boardCountDisplay');
+let drawnNumbers = [];
+const boardSize = 5;
+const koreanAlphabet = '가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허고노도모보소오조초코토포호구누두루무부수우주추쿠투푸후기니디리미비시이지치키티피히'.split('');
+
+window.onload = () => updateBoards();
+boardCountSlider.addEventListener('input', () => {
+  boardCountDisplay.textContent = boardCountSlider.value;
+  updateBoards();
+});
+rollBallButton.addEventListener('click', rollBall);
+resetButton.addEventListener('click', resetGame);
+document.querySelectorAll('input[name="mode"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    drawnNumbers = [];
+    drawnNumbersContainer.innerHTML = '';
+    updateBoards();
+  });
+});
+
+function updateBoards() {
+  const existingNames = Array.from(document.querySelectorAll('.nameInput')).map(input => input.value);
+  bingoBoardsContainer.innerHTML = '';
+
+  const boardCount = parseInt(boardCountSlider.value);
+  for (let i = 0; i < boardCount; i++) {
+    addBoard(i, existingNames[i] || '');
+  }
+}
+
+function addBoard(index, nameValue) {
+  const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+  const dataSet = selectedMode === 'alphabet' ? koreanAlphabet : generateRandomNumbers();
+
+  const boardContainer = document.createElement('div');
+  boardContainer.classList.add('boardContainer');
+
+  const boardHeader = document.createElement('div');
+  boardHeader.classList.add('boardHeader');
+
+  const boardLabel = document.createElement('div');
+  boardLabel.classList.add('boardLabel');
+  boardLabel.textContent = `보드 #${index + 1}`;
+
+  const nameInput = document.createElement('input');
+  nameInput.classList.add('nameInput');
+  nameInput.setAttribute('placeholder', '이름 입력...');
+  nameInput.value = nameValue;
+
+  boardHeader.appendChild(boardLabel);
+  boardHeader.appendChild(nameInput);
+  boardContainer.appendChild(boardHeader);
+
+  const bingoBoard = createBingoBoard(dataSet);
+  boardContainer.appendChild(bingoBoard);
+
+  const colorSchemes = createColorSchemes(boardContainer);
+  boardContainer.appendChild(colorSchemes);
+
+  bingoBoardsContainer.appendChild(boardContainer);
+}
+
+function createBingoBoard(chars) {
+  const bingoBoard = document.createElement('div');
+  bingoBoard.classList.add('bingoBoard');
+  const boardChars = shuffle(chars).slice(0, 25);
+
+  boardChars.forEach(char => {
+    const cell = document.createElement('div');
+    cell.classList.add('cell');
+    cell.textContent = char;
+    cell.dataset.char = char;
+    cell.addEventListener('click', () => {
+      speakChar(char);
+    });
+    bingoBoard.appendChild(cell);
+  });
+
+  return bingoBoard;
+}
+
+function createColorSchemes(boardContainer) {
+  const container = document.createElement('div');
+  container.classList.add('colorSchemes');
+  const schemes = [
+    ['#00274d', '#ffcb05'],
+    ['#ffcb05', '#00274d'],
+    ['#f5f5f5', '#333'],
+    ['#333', '#fff'],
+    ['#d32f2d', '#fafafa'],
+    ['#1976d2', '#fff'],
+    ['#388e3c', '#fff'],
+    ['#fbc02d', '#000'],
+  ];
+  schemes.forEach(([bg, text]) => {
+    const button = document.createElement('button');
+    button.classList.add('colorButton');
+    button.style.backgroundColor = bg;
+    button.style.borderColor = text;
+    button.onclick = () => {
+      boardContainer.style.setProperty('--tile-bg', bg);
+      boardContainer.style.setProperty('--tile-text', text);
+    };
+    container.appendChild(button);
+  });
+  return container;
+}
+
+function rollBall() {
+  const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+  const dataSet = selectedMode === 'alphabet' ? koreanAlphabet : generateRandomNumbers();
+  const remaining = dataSet.filter(c => !drawnNumbers.includes(c));
+
+  if (remaining.length === 0) {
+    alert("모든 글자 또는 숫자가 선택되었습니다!");
+    return;
+  }
+
+  const drawn = remaining[Math.floor(Math.random() * remaining.length)];
+  drawnNumbers.push(drawn);
+  displayDrawnChar(drawn);
+  speakChar(drawn);
+  updateBoardsHighlight();
+  checkAllBoards();
+}
+
+function checkAllBoards() {
+  const boards = document.querySelectorAll('.bingoBoard');
+  boards.forEach((board, index) => {
+    const cells = Array.from(board.querySelectorAll('.cell'));
+    highlightDrawnLetters(cells);
+    if (checkWinningLine(cells)) {
+      alert(`보드 #${index + 1}에서 빙고!`);
+    }
+  });
+}
+
+function resetGame() {
+  drawnNumbers = [];
+  drawnNumbersContainer.innerHTML = '';
+  updateBoards();
+}
+
+function displayDrawnChar(char) {
+  const div = document.createElement('div');
+  div.classList.add('drawnNumber');
+  div.textContent = char;
+  div.addEventListener('click', () => speakChar(char));
+  drawnNumbersContainer.appendChild(div);
+}
+
+function speakChar(char) {
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const utterance = new SpeechSynthesisUtterance(char);
+  utterance.lang = 'ko-KR';
+  synth.speak(utterance);
+}
+
+function highlightDrawnLetters(cells) {
+  cells.forEach(cell => {
+    const char = cell.dataset.char;
+    if (drawnNumbers.includes(char)) {
+      cell.classList.add('drawn');
+    } else {
+      cell.classList.remove('drawn');
+    }
+  });
+}
+
+function checkWinningLine(cells) {
+  for (let i = 0; i < boardSize; i++) {
+    const row = cells.slice(i * boardSize, (i + 1) * boardSize);
+    if (row.every(cell => cell.classList.contains('drawn'))) return true;
+    const col = cells.filter((_, idx) => idx % boardSize === i);
+    if (col.every(cell => cell.classList.contains('drawn'))) return true;
+  }
+  const diag1 = [0, 6, 12, 18, 24];
+  const diag2 = [4, 8, 12, 16, 20];
+  return diag1.every(i => cells[i].classList.contains('drawn')) || diag2.every(i => cells[i].classList.contains('drawn'));
+}
+
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function generateRandomNumbers() {
+  return shuffle(Array.from({ length: 75 }, (_, i) => String(i + 1))).slice(0, 25);
+}
+
+function updateBoardsHighlight() {
+  document.querySelectorAll('.bingoBoard').forEach(board => {
+    highlightDrawnLetters(board.querySelectorAll('.cell'));
+  });
+}
+</script>
+
+</body>
+</html>

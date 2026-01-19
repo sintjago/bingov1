@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Lingual Bingo Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    #controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    #colorSchemes, #languages {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .colorButton {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid;
+      cursor: pointer;
+    }
+    #bingoBoards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+    .bingoBoard {
+      display: grid;
+      grid-template-columns: repeat(5, 60px);
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .cell {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.5rem;
+      cursor: pointer;
+      border: 1px solid #333;
+      background-color: var(--cell-bg, #00274d); /* Default to blue background */
+      color: var(--cell-text, #ffcb05); /* Default to maize text */
+    }
+    .marked {
+      background-color: #90caf9;
+    }
+    .drawn {
+      background-color: #ffeb3b;
+    }
+    .boardContainer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .checkBingoButton {
+      margin-top: 10px;
+      padding: 8px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+    }
+    #rollBallButton, #resetButton {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+    }
+    #drawnNumbers {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+      max-width: 300px;
+      justify-content: center;
+    }
+    .drawnNumber {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.2rem;
+      border: 1px solid #333;
+      cursor: pointer;
+      background-color: var(--cell-bg, #00274d); /* Default to blue background */
+      color: var(--cell-text, #ffcb05); /* Default to maize text */
+    }
+    #boardCountDisplay {
+      margin-left: 10px;
+      font-size: 1.2rem;
+    }
+    #modeSelection {
+      margin: 10px 0;
+      display: flex;
+      gap: 10px;
+    }
+    input[type="radio"] {
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Multi-Lingual Bingo Game</h1>
+  <div id="controls">
+    <label for="boardCount">Number of Boards:</label>
+    <input type="range" id="boardCount" min="1" max="30" value="1" />
+    <span id="boardCountDisplay">1</span> <!-- Display the number of boards -->
+
+    <div id="languages">
+      <label for="languageSelect">Language:</label>
+      <select id="languageSelect">
+        <option value="english">English</option>
+        <option value="spanish">Spanish</option>
+        <option value="russian">Russian</option>
+        <option value="hindi">Hindi</option>
+        <option value="japanese">Japanese</option>
+        <option value="chinese">Chinese</option>
+        <option value="arabic">Arabic</option>
+        <option value="hebrew">Hebrew</option>
+      </select>
+    </div>
+
+    <!-- Mode Selection: Alphabet or Numbers -->
+    <div id="modeSelection">
+      <label><input type="radio" name="mode" value="alphabet" checked> Alphabet</label>
+      <label><input type="radio" name="mode" value="numbers"> Numbers</label>
+    </div>
+
+    <div id="colorSchemes">
+      <button class="colorButton" style="background-color: #00274d; border-color: #ffcb05;" onclick="setColorScheme('#00274d', '#ffcb05')"></button>
+      <button class="colorButton" style="background-color: #ffcb05; border-color: #00274d;" onclick="setColorScheme('#ffcb05', '#00274d')"></button>
+      <button class="colorButton" style="background-color: #f5f5f5; border-color: #333;" onclick="setColorScheme('#f5f5f5', '#333')"></button>
+      <button class="colorButton" style="background-color: #333; border-color: #fff;" onclick="setColorScheme('#333', '#fff')"></button>
+      <button class="colorButton" style="background-color: #d32f2f; border-color: #fafafa;" onclick="setColorScheme('#d32f2d', '#fafafa')"></button>
+      <button class="colorButton" style="background-color: #1976d2; border-color: #fff;" onclick="setColorScheme('#1976d2', '#fff')"></button>
+      <button class="colorButton" style="background-color: #388e3c; border-color: #fff;" onclick="setColorScheme('#388e3c', '#fff')"></button>
+      <button class="colorButton" style="background-color: #fbc02d; border-color: #000;" onclick="setColorScheme('#fbc02d', '#000')"></button>
+    </div>
+
+    <div>
+      <button id="rollBallButton">Roll Ball</button>
+      <button id="resetButton">Reset</button>
+    </div>
+  </div>
+
+  <div id="drawnNumbers"></div>
+  <div id="bingoBoards"></div>
+
+  <script>
+    const bingoBoardsContainer = document.getElementById('bingoBoards');
+    const boardCountSlider = document.getElementById('boardCount');
+    const rollBallButton = document.getElementById('rollBallButton');
+    const resetButton = document.getElementById('resetButton');
+    const drawnNumbersContainer = document.getElementById('drawnNumbers');
+    const languageSelect = document.getElementById('languageSelect');
+    const boardCountDisplay = document.getElementById('boardCountDisplay');
+    const modeSelection = document.getElementsByName('mode');
+    let drawnNumbers = [];
+    const boardSize = 5;
+
+    // Alphabet and Number configurations based on language
+    const languageAlphabets = {
+      english: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      spanish: 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ',
+      russian: 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ',
+      hindi: 'अआइईउऊऋएऐओऔअंअः',
+      japanese: 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほ',
+      chinese: '一乙二十丁厂七卜人入八九几儿了力乃刀又三于干亏士工土才寸下大丈与万上小口巾山千乞川亿个勺久凡及夕丸么广亡门义之尸弓己已子卫也女飞刃习叉马乡丰王井开夫天无元专云扎艺木五支厅不太犬区历尤友匹车巨牙屯比互切瓦止少日中贝内水见午牛手毛气升长仁什片仆化仇币仍仅斤爪反介父从今凶分乏公仓月氏勿欠风丹匀乌勾凤六文亢方火为斗忆订计户认心尺引丑爿巴孔队办以允予劝双书幻玉刊示末未击打巧正扑扒功扔去甘世古节本术可丙左厉石右布龙平灭轧东卡北占业旧帅归且旦目叶甲申叮电号田由史只央兄叼叫另叨四生失禾丘付仗代仙们仪白仔他斥瓜乎丛令用甩印乐句匆册犯外处冬鸟务包饥主市立闪兰半汁汇头汉宁穴它讨写让礼训必议讯记永司尼民出辽奶奴加召皮边发孕圣对台矛纠母幼丝式刑动扛寺吉扣考托圾扬垂护壳志扭块声把报却劫芽花芹菲芸芦苗英范',
+      arabic: 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي',
+      hebrew: 'אבגדהוזחטיכלמנסעפצקרשת'
+    };
+
+    const languageNumbers = {
+      english: generateRandomNumbers(),
+      spanish: generateRandomNumbers(),
+      russian: generateRandomNumbers(),
+      hindi: convertToHindiNumbers(generateRandomNumbers()),
+      japanese: convertToJapaneseNumbers(generateRandomNumbers()),
+      chinese: convertToChineseNumbers(generateRandomNumbers()),
+      arabic: convertToArabicNumbers(generateRandomNumbers()),
+      hebrew: generateRandomNumbers()
+    };
+
+    const languageVoices = {
+      english: 'en-US',
+      spanish: 'es-ES',
+      russian: 'ru-RU',
+      hindi: 'hi-IN',
+      japanese: 'ja-JP',
+      chinese: 'zh-CN',
+      arabic: 'ar-SA',
+      hebrew: 'he-IL'
+    };
+
+    // Initialize with one bingo board when the page loads
+    window.onload = () => {
+      updateBoards(); // Auto-load first board
+    };
+
+    // Display the number of boards dynamically
+    boardCountSlider.addEventListener('input', () => {
+      boardCountDisplay.textContent = boardCountSlider.value;
+      updateBoards();
+    });
+
+    rollBallButton.addEventListener('click', rollBall);
+    resetButton.addEventListener('click', resetGame);
+    languageSelect.addEventListener('change', updateBoards);
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
+      radio.addEventListener('change', updateBoards);
+    });
+
+    function updateBoards() {
+      bingoBoardsContainer.innerHTML = '';
+      drawnNumbers = []; // Clear drawn numbers on board update
+      const boardCount = parseInt(boardCountSlider.value);
+      const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+      const alphabetOrNumber = selectedMode === 'alphabet' ? languageAlphabets[languageSelect.value].split('') : languageNumbers[languageSelect.value];
+
+      for (let i = 0; i < boardCount; i++) {
+        const boardContainer = document.createElement('div');
+        boardContainer.classList.add('boardContainer');
+        
+        const bingoBoard = createBingoBoard(alphabetOrNumber);
+        boardContainer.appendChild(bingoBoard);
+
+        const checkBingoButton = document.createElement('button');
+        checkBingoButton.textContent = 'Check Bingo!';
+        checkBingoButton.classList.add('checkBingoButton');
+        checkBingoButton.addEventListener('click', () => checkBingo(bingoBoard));
+        boardContainer.appendChild(checkBingoButton);
+
+        bingoBoardsContainer.appendChild(boardContainer);
+      }
+    }
+
+    function createBingoBoard(chars) {
+      const bingoBoard = document.createElement('div');
+      bingoBoard.classList.add('bingoBoard');
+      const boardChars = shuffle(chars).slice(0, 25); // Pick 25 random chars
+
+      boardChars.forEach(char => {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.textContent = char;
+        cell.dataset.char = char;
+        cell.addEventListener('click', () => {
+          cell.classList.toggle('marked');
+          speakChar(char);
+        });
+        bingoBoard.appendChild(cell);
+      });
+
+      return bingoBoard;
+    }
+
+    function checkBingo(board) {
+      const cells = Array.from(board.querySelectorAll('.cell'));
+      const markedChars = cells
+        .filter(cell => cell.classList.contains('marked'))
+        .map(cell => cell.dataset.char);
+
+      highlightDrawnLetters(cells);
+      const isBingo = checkWinningLine(cells);
+
+      if (isBingo) {
+        alert('Bingo!');
+      } else {
+        alert('No Bingo!');
+      }
+    }
+
+    function highlightDrawnLetters(cells) {
+      cells.forEach(cell => {
+        const char = cell.dataset.char;
+        if (drawnNumbers.includes(char)) {
+          cell.classList.add('drawn');
+        } else {
+          cell.classList.remove('drawn');
+        }
+      });
+    }
+
+    function checkWinningLine(cells) {
+      for (let i = 0; i < boardSize; i++) {
+        // Check for a full horizontal line
+        const row = cells.slice(i * boardSize, (i + 1) * boardSize);
+        if (row.every(cell => cell.classList.contains('drawn'))) {
+          return true;
+        }
+
+        // Check for a full vertical line
+        const col = cells.filter((_, index) => index % boardSize === i);
+        if (col.every(cell => cell.classList.contains('drawn'))) {
+          return true;
+        }
+      }
+
+      // Check for full diagonal lines
+      const diag1 = [0, 6, 12, 18, 24];
+      const diag2 = [4, 8, 12, 16, 20];
+
+      if (diag1.every(index => cells[index].classList.contains('drawn')) ||
+          diag2.every(index => cells[index].classList.contains('drawn'))) {
+        return true;
+      }
+
+      return false;
+    }
+
+    function rollBall() {
+      const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+      const alphabetOrNumber = selectedMode === 'alphabet' ? languageAlphabets[languageSelect.value].split('') : languageNumbers[languageSelect.value];
+      const remainingChars = alphabetOrNumber.filter(char => !drawnNumbers.includes(char));
+      if (remainingChars.length === 0) {
+        alert("All letters/numbers have been drawn!");
+        return;
+      }
+
+      const randomIndex = Math.floor(Math.random() * remainingChars.length);
+      const drawnChar = remainingChars[randomIndex];
+      drawnNumbers.push(drawnChar);
+      displayDrawnChar(drawnChar);
+      speakChar(drawnChar);
+    }
+
+    function resetGame() {
+      drawnNumbers = []; // Clear drawn numbers
+      drawnNumbersContainer.innerHTML = ''; // Clear drawn numbers display
+      updateBoards(); // Reset the boards
+    }
+
+    function displayDrawnChar(char) {
+      const drawnCharElement = document.createElement('div');
+      drawnCharElement.classList.add('drawnNumber');
+      drawnCharElement.textContent = char;
+      drawnCharElement.addEventListener('click', () => speakChar(char));
+      drawnNumbersContainer.appendChild(drawnCharElement);
+    }
+
+    function speakChar(char) {
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      const utterance = new SpeechSynthesisUtterance(char);
+      utterance.lang = languageVoices[languageSelect.value]; // Use language-specific voice
+      synth.speak(utterance);
+    }
+
+    function setColorScheme(backgroundColor, textColor) {
+      document.documentElement.style.setProperty('--cell-bg', backgroundColor);
+      document.documentElement.style.setProperty('--cell-text', textColor);
+      document.querySelectorAll('.cell, .drawnNumber').forEach(cell => {
+        cell.style.backgroundColor = backgroundColor;
+        cell.style.color = textColor;
+      });
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function generateRandomNumbers() {
+      const numbers = Array.from({ length: 75 }, (_, i) => i + 1);
+      return shuffle(numbers).slice(0, 25).map(String); // Generate random set of 25 numbers
+    }
+
+    function convertToHindiNumbers(numbers) {
+      const hindiDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+      return numbers.map(num => num.split('').map(digit => hindiDigits[digit]).join(''));
+    }
+
+    function convertToJapaneseNumbers(numbers) {
+      const japaneseDigits = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+      return numbers.map(num => num.split('').map(digit => japaneseDigits[digit]).join(''));
+    }
+
+    function convertToChineseNumbers(numbers) {
+      const chineseDigits = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+      return numbers.map(num => num.split('').map(digit => chineseDigits[digit]).join(''));
+    }
+
+    function convertToArabicNumbers(numbers) {
+      const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+      return numbers.map(num => num.split('').map(digit => arabicDigits[digit]).join(''));
+    }
+  </script>
+</body>
+</html>
